@@ -15,7 +15,7 @@ export default function Home() {
   const handleGenerateOutline = async () => {
     setError(''); // 清除之前的错误信息
     setLoading(true); // 设置加载状态为 true
-    setOutline(''); // 清空旧大纲
+    setOutline(''); // 清空旧大纲（在重新生成时）
 
     try {
       const response = await fetch('/api/outline', {
@@ -28,16 +28,22 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '生成大纲失败。');
+        // 如果后端返回了具体的错误信息，则使用它
+        throw new Error(errorData.error || `HTTP 错误：${response.status}`);
       }
 
       const data = await response.json();
       setOutline(data.outline); // 更新大纲状态
       setStep(2); // 切换到大纲确认步骤
 
-    } catch (err: any) {
+    } catch (err: unknown) { // 修正点：将 'any' 修改为 'unknown'
       console.error('API 调用失败:', err);
-      setError(err.message || '网络或服务器错误，请稍后再试。');
+      // 对错误进行更安全的类型判断
+      if (err instanceof Error) {
+        setError(err.message || '网络或服务器错误，请稍后再试。');
+      } else {
+        setError('发生未知错误，请稍后再试。');
+      }
     } finally {
       setLoading(false); // 无论成功或失败，都结束加载状态
     }

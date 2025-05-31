@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     }
 
     // 调用 OpenRouter API 生成故事大纲
-    // 注意：这里使用了 'as any' 来绕过 TypeScript 的类型检查，因为 'extra_headers' 和 'extra_body' 是 OpenRouter 特有的属性
-    const completion = await (client.chat.completions as any).create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const completion = await (client.chat.completions as any).create({ // 修正点：添加了 // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // OpenRouter 特有的额外 HTTP 头部信息
       extra_headers: {
         "HTTP-Referer": YOUR_SITE_URL, // 网站 URL，用于 OpenRouter 上的排名
@@ -68,13 +68,15 @@ export async function POST(req: Request) {
     // 返回成功响应，包含生成的大纲
     return NextResponse.json({ outline: outlineContent }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: unknown) { // 修正点：将 catch(error: any) 改为 catch(error: unknown)
     console.error("生成故事大纲失败:", error);
-    // 检查是否是 OpenAI 相关的错误
-    if (error instanceof Error && 'code' in error && error.code === 'authentication_error') {
-        return NextResponse.json({ error: "API 认证失败，请检查 OpenRouter API Key 配置是否正确。" }, { status: 401 });
+    // 对错误进行更安全的类型判断
+    if (error instanceof Error) {
+        if ('code' in error && error.code === 'authentication_error') {
+            return NextResponse.json({ error: "API 认证失败，请检查 OpenRouter API Key 配置是否正确。" }, { status: 401 });
+        }
+        return NextResponse.json({ error: `生成故事大纲时发生错误: ${error.message || "未知错误"}` }, { status: 500 });
     }
-    // 捕获其他可能的网络或 API 错误
     return NextResponse.json({ error: "生成故事大纲时发生未知错误，请稍后再试。" }, { status: 500 });
   }
 }
